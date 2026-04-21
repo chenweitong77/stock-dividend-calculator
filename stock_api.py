@@ -100,7 +100,7 @@ class EastMoneyDividendAPI:
                 "SECURITY_CODE,SECURITY_NAME_ABBR,REPORTDATE,"
                 "ASSIGNDSCRPT,PAYYEAR,ZXGXL,NOTICE_DATE,EITIME"
             ),
-            "filter": f'(SECURITY_CODE%3D%22{code}%22)',
+            "filter": f'(SECURITY_CODE="{code}")',
             "pageNumber": 1,
             "pageSize": page_size,
             "source": "WEB",

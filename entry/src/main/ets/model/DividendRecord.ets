@@ -5,9 +5,10 @@
 
 /** 分红类型 */
 export enum DividendType {
-  MidYear = '中报',   // 中期分红
-  FullYear = '年报',  // 年度分红
-  Other = '其他'
+  Q1 = '一季报',    // 一季报分红
+  MidYear = '中报',  // 中期分红
+  Q3 = '三季报',    // 三季报分红
+  FullYear = '年报'  // 年度分红
 }
 
 /** 单条分红记录 */
@@ -18,7 +19,7 @@ export class DividendRecord {
   desc: string = '';         // 分红方案描述 "10派16.20元(含税)"
   perShare: number = 0;      // 每股派息金额
   isPaid: boolean = false;   // 是否已派息到账
-  type: DividendType = DividendType.Other;
+  type: DividendType = DividendType.MidYear;
 
   /**
    * 从东方财富 API 原始数据构建
@@ -32,7 +33,7 @@ export class DividendRecord {
     record.desc = String(item['ASSIGNDSCRPT'] ?? '');
     record.perShare = DividendRecord.parseDividendPerShare(record.desc);
     record.isPaid = DividendRecord.checkIfPaid(record.exDate);
-    record.type = DividendRecord.detectType(record.noticeDate);
+    record.type = DividendRecord.detectType(record.exDate, record.noticeDate);
 
     return record;
   }
@@ -66,19 +67,36 @@ export class DividendRecord {
   }
 
   /**
-   * 根据公告日期判断是中报还是年报
+   * 根据除权日期（exDate）判断分红类型：
+   * - 年报: 除权在次年3-5月
+   * - 中报: 除权在7-9月
+   * - 三季报: 除权在10-11月
+   * - 一季报: 除权在4-5月（需结合公告日期区分）
    */
-  static detectType(noticeDate: string): DividendType {
-    if (!noticeDate) {
-      return DividendType.Other;
+  static detectType(exDate: string, noticeDate: string): DividendType {
+    if (!exDate) {
+      return DividendType.MidYear;
     }
-    const month = parseInt(noticeDate.substring(5, 7));
-    if (month >= 3 && month <= 5) {
-      return DividendType.FullYear; // 年报
-    } else if (month >= 7 && month <= 9) {
-      return DividendType.MidYear;  // 中报
+
+    const month = parseInt(exDate.substring(5, 7));
+
+    if (3 <= month && month <= 5) {
+      // 3-5月：年报或一季报，用公告日期区分
+      // 一季报公告在4-5月，年报公告在2-3月
+      if (noticeDate && noticeDate.length >= 7) {
+        const noticeMonth = parseInt(noticeDate.substring(5, 7));
+        if (4 <= noticeMonth && noticeMonth <= 5) {
+          return DividendType.Q1; // 一季报
+        }
+      }
+      return DividendType.FullYear;
+    } else if (7 <= month && month <= 9) {
+      return DividendType.MidYear;
+    } else if (10 <= month && month <= 11) {
+      return DividendType.Q3; // 三季报
     }
-    return DividendType.Other;
+
+    return DividendType.MidYear;
   }
 }
 
@@ -87,6 +105,8 @@ export class YearlyDividend {
   year: string = '';
   totalPerShare: number = 0;  // 全年每股合计
   details: DividendRecord[] = [];
-  hasMidYear: boolean = false;
-  hasFullYear: boolean = false;
+  hasQ1: boolean = false;       // 是否有 一季报 分红
+  hasMidYear: boolean = false;  // 是否有 中报 分红
+  hasQ3: boolean = false;       // 是否有 三季报 分红
+  hasFullYear: boolean = false; // 是否有 年报 分红
 }

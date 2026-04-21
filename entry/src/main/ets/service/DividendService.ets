@@ -25,7 +25,7 @@ export class DividendService {
       const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?` +
         `reportName=RPT_LICO_FN_CPD&` +
         `columns=SECURITY_CODE,SECURITY_NAME_ABBR,REPORTDATE,ASSIGNDSCRPT,PAYYEAR,ZXGXL,NOTICE_DATE,EITIME&` +
-        `filter=(SECURITY_CODE%3D%22${code}%22)&` +
+        `filter=(SECURITY_CODE="${code}")&` +
         `pageNumber=1&pageSize=${pageSize}&source=WEB&client=WEB`;
 
       const raw = await HttpUtil.get(url, {
@@ -70,9 +70,13 @@ export class DividendService {
       yearly.details.push(record);
       yearly.totalPerShare += record.perShare;
 
-      // 判断包含中报还是年报
-      if (record.type === DividendType.MidYear) {
+      // 判断包含哪些类型的分红
+      if (record.type === DividendType.Q1) {
+        yearly.hasQ1 = true;
+      } else if (record.type === DividendType.MidYear) {
         yearly.hasMidYear = true;
+      } else if (record.type === DividendType.Q3) {
+        yearly.hasQ3 = true;
       } else if (record.type === DividendType.FullYear) {
         yearly.hasFullYear = true;
       }

@@ -81,30 +81,47 @@ class DividendCalculator:
             "year": year,
             "total_per_share": round(total_per_share, 4),
             "detail": yearly_records,
-            "has_mid_year": any("中报" in rec["desc"] for rec in yearly_records)
-            or self._is_mid_year_record(yearly_records),
-            "has_full_year": any("年报" in rec["desc"] for rec in yearly_records)
-            or self._is_full_year_record(yearly_records),
-            "is_announced": any(
-                "年报" in rec["desc"] or "已公告" in rec["desc"]
-                for rec in yearly_records
-            ),
+            "has_mid_year": any(rec["type"] == "中报" for rec in yearly_records),
+            "has_full_year": any(rec["type"] == "年报" for rec in yearly_records),
+            "has_q1": any(rec["type"] == "一季报" for rec in yearly_records),
+            "has_q3": any(rec["type"] == "三季报" for rec in yearly_records),
+            "is_announced": len(yearly_records) > 0,
             "is_paid": all(rec["is_paid"] for rec in yearly_records),
         }
 
     def _detect_dividend_type(self, record: Dict[str, Any]) -> str:
-        """根据公告日期判断是中报还是年报分红"""
+        """
+        根据除权日期（EITIME）判断分红类型：
+        - 年报: 除权在次年3-5月
+        - 中报: 除权在7-9月
+        - 三季报: 除权在10-11月
+        - 一季报: 除权在4-5月（需结合公告日期区分：公告在同年上半年为一季报）
+        """
+        eitime = record.get("EITIME", "")
         notice_date = record.get("NOTICE_DATE", "")
-        if notice_date:
-            month = int(notice_date[5:7]) if len(notice_date) >= 7 else 0
-            if 3 <= month <= 5:
-                return "年报"
-            elif 7 <= month <= 9:
-                return "中报"
+
+        if not eitime:
+            return "其他"
+
+        month = int(eitime[5:7]) if len(eitime) >= 7 else 0
+
+        if 3 <= month <= 5:
+            # 3-5月：年报或一季报，参考公告日期区分
+            # 一季报公告在4-5月，年报公告在次年3-4月
+            if notice_date and len(notice_date) >= 7:
+                notice_month = int(notice_date[5:7])
+                if 4 <= notice_month <= 5:
+                    return "一季报"
+            return "年报"
+        elif 7 <= month <= 9:
+            return "中报"
+        elif 10 <= month <= 11:
+            return "三季报"
+
         return "其他"
 
     def _is_mid_year_record(self, records: List[Dict]) -> bool:
-        """判断是否有中报分红（根据派息日期在7-9月）"""
+        """判断是否有中报分红（根据除权日期在7-9月）"""
         for rec in records:
             ex_date = rec.get("ex_date", "")
             if ex_date:
@@ -114,7 +131,7 @@ class DividendCalculator:
         return False
 
     def _is_full_year_record(self, records: List[Dict]) -> bool:
-        """判断是否有年报分红（根据派息日期在次年3-5月）"""
+        """判断是否有年报分红（根据除权日期在次年3-5月）"""
         for rec in records:
             ex_date = rec.get("ex_date", "")
             if ex_date:
