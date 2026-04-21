@@ -63,7 +63,7 @@ class DividendCalculator:
 
             yearly_records.append(
                 {
-                    "type": self._detect_dividend_type(r),
+                    "type": self._detect_dividend_type(r, year),
                     "desc": assign_desc,
                     "per_share": div_per_share,
                     "notice_date": r.get("NOTICE_DATE", "")[:10]
@@ -89,34 +89,34 @@ class DividendCalculator:
             "is_paid": all(rec["is_paid"] for rec in yearly_records),
         }
 
-    def _detect_dividend_type(self, record: Dict[str, Any]) -> str:
+    def _detect_dividend_type(self, record: Dict[str, Any], year: str) -> str:
         """
-        根据除权日期（EITIME）判断分红类型：
-        - 年报: 除权在次年3-5月
-        - 中报: 除权在7-9月
-        - 三季报: 除权在10-11月
-        - 一季报: 除权在4-5月（需结合公告日期区分：公告在同年上半年为一季报）
+        根据公告日期年份判断分红类型：
+        - 年报: 公告年份 = 归属年份 + 1（所有月份都是年报）
+        - 一季报: 公告年份 = 归属年份，除权在3-6月
+        - 中报: 公告年份 = 归属年份，除权在7-9月
+        - 三季报: 公告年份 = 归属年份，除权在10-12月
         """
-        eitime = record.get("EITIME", "")
         notice_date = record.get("NOTICE_DATE", "")
+        eitime = record.get("EITIME", "")
 
-        if not eitime:
+        if not notice_date:
             return "其他"
 
-        month = int(eitime[5:7]) if len(eitime) >= 7 else 0
-
-        if 3 <= month <= 5:
-            # 3-5月：年报或一季报，参考公告日期区分
-            # 一季报公告在4-5月，年报公告在次年3-4月
-            if notice_date and len(notice_date) >= 7:
-                notice_month = int(notice_date[5:7])
-                if 4 <= notice_month <= 5:
-                    return "一季报"
+        # 规则：公告年份 = 归属年份 + 1 → 年报
+        notice_year = notice_date[:4]
+        if notice_year == str(int(year) + 1):
             return "年报"
-        elif 7 <= month <= 9:
-            return "中报"
-        elif 10 <= month <= 11:
-            return "三季报"
+
+        # 公告年份 = 归属年份，看除权月份
+        if notice_year == year:
+            month = int(eitime[5:7]) if len(eitime) >= 7 else 0
+            if 3 <= month <= 6:
+                return "一季报"
+            elif 7 <= month <= 9:
+                return "中报"
+            elif 10 <= month <= 12:
+                return "三季报"
 
         return "其他"
 

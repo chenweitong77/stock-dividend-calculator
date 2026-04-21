@@ -33,7 +33,7 @@ export class DividendRecord {
     record.desc = String(item['ASSIGNDSCRPT'] ?? '');
     record.perShare = DividendRecord.parseDividendPerShare(record.desc);
     record.isPaid = DividendRecord.checkIfPaid(record.exDate);
-    record.type = DividendRecord.detectType(record.exDate, record.noticeDate);
+    record.type = DividendRecord.detectType(record.exDate, record.noticeDate, record.payYear);
 
     return record;
   }
@@ -67,33 +67,35 @@ export class DividendRecord {
   }
 
   /**
-   * 根据除权日期（exDate）判断分红类型：
-   * - 年报: 除权在次年3-5月
-   * - 中报: 除权在7-9月
-   * - 三季报: 除权在10-11月
-   * - 一季报: 除权在4-5月（需结合公告日期区分）
+   * 根据公告日期年份判断分红类型：
+   * - 年报: 公告年份 = 归属年份 + 1（所有月份都是年报）
+   * - 一季报: 公告年份 = 归属年份，除权在3-6月
+   * - 中报: 公告年份 = 归属年份，除权在7-9月
+   * - 三季报: 公告年份 = 归属年份，除权在10-12月
    */
-  static detectType(exDate: string, noticeDate: string): DividendType {
-    if (!exDate) {
+  static detectType(exDate: string, noticeDate: string, payYear: string): DividendType {
+    if (!noticeDate) {
       return DividendType.MidYear;
     }
 
-    const month = parseInt(exDate.substring(5, 7));
+    const noticeYear = noticeDate.substring(0, 4);
+    const nextYear = (parseInt(payYear) + 1).toString();
 
-    if (3 <= month && month <= 5) {
-      // 3-5月：年报或一季报，用公告日期区分
-      // 一季报公告在4-5月，年报公告在2-3月
-      if (noticeDate && noticeDate.length >= 7) {
-        const noticeMonth = parseInt(noticeDate.substring(5, 7));
-        if (4 <= noticeMonth && noticeMonth <= 5) {
-          return DividendType.Q1; // 一季报
-        }
-      }
+    // 规则：公告年份 = 归属年份 + 1 → 年报
+    if (noticeYear === nextYear) {
       return DividendType.FullYear;
-    } else if (7 <= month && month <= 9) {
-      return DividendType.MidYear;
-    } else if (10 <= month && month <= 11) {
-      return DividendType.Q3; // 三季报
+    }
+
+    // 公告年份 = 归属年份，看除权月份
+    if (noticeYear === payYear) {
+      const month = parseInt(exDate.substring(5, 7));
+      if (3 <= month && month <= 6) {
+        return DividendType.Q1;
+      } else if (7 <= month && month <= 9) {
+        return DividendType.MidYear;
+      } else if (10 <= month && month <= 12) {
+        return DividendType.Q3;
+      }
     }
 
     return DividendType.MidYear;
