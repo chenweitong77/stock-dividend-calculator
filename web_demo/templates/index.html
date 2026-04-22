@@ -254,8 +254,85 @@
             margin-bottom: 16px;
         }
 
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #FFFFFF;
+            border: 1px solid #E5E5E5;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .search-dropdown.show {
+            display: block;
+        }
+
+        .search-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #F0F0F0;
+        }
+
+        .search-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-item:hover {
+            background: #F5F5F7;
+        }
+
+        .search-item-code {
+            font-size: 14px;
+            color: #1D1D1F;
+            font-weight: 500;
+        }
+
+        .search-item-name {
+            font-size: 12px;
+            color: #86868B;
+            margin-top: 2px;
+        }
+
         .hidden {
             display: none;
+        }
+
+        .year-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .year-btn {
+            padding: 8px 16px;
+            border: 1px solid #E5E5E5;
+            border-radius: 20px;
+            background: #FFFFFF;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .year-btn:hover {
+            border-color: #007AFF;
+            color: #007AFF;
+        }
+
+        .year-btn.active {
+            background: #007AFF;
+            border-color: #007AFF;
+            color: #FFFFFF;
         }
     </style>
 </head>
@@ -269,8 +346,11 @@
             <div class="card">
                 <h2 class="card-title">持仓信息</h2>
                 <div class="form-group">
-                    <label>股票代码</label>
-                    <input type="text" id="stockCode" placeholder="输入股票代码 如601318" value="601318">
+                    <label>股票代码 / 名称</label>
+                    <div class="search-wrapper">
+                        <input type="text" id="stockCode" placeholder="输入股票代码或名称 如601318 或 中国平安" value="601318">
+                        <div class="search-dropdown" id="searchDropdown"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>成本价 (元)</label>
@@ -285,6 +365,7 @@
 
             <div class="card">
                 <h2 class="card-title">分红结果</h2>
+                <div class="year-selector" id="yearSelector"></div>
                 <div id="resultContent">
                     <div class="loading">请输入持仓信息并点击计算</div>
                 </div>
@@ -312,13 +393,18 @@
     </div>
 
     <script>
+        let searchTimeout = null;
+        let allDividendData = {};  // 保存所有年份的分红数据
+        let availableYears = [];   // 可选的年份列表
+        let selectedYear = null;    // 当前选中的年份
+
         async function calculateDividend() {
-            const code = document.getElementById('stockCode').value.trim();
+            const input = document.getElementById('stockCode').value.trim();
             const costPrice = parseFloat(document.getElementById('costPrice').value);
             const shares = parseInt(document.getElementById('shares').value);
             const btn = document.getElementById('calculateBtn');
 
-            if (!code || !costPrice || !shares) {
+            if (!input || !costPrice || !shares) {
                 alert('请填写完整信息');
                 return;
             }
@@ -327,11 +413,34 @@
             btn.textContent = '计算中...';
 
             try {
+                let code = input;
+
+                // 如果不是6位数字，先搜索获取代码
+                if (!/^\d{6}$/.test(input)) {
+                    const searchResponse = await fetch(`/api/search?keyword=${encodeURIComponent(input)}`);
+                    const searchResult = await searchResponse.json();
+
+                    if (!searchResult.success || !searchResult.data || searchResult.data.length === 0) {
+                        document.getElementById('resultContent').innerHTML = `
+                            <div class="error-message">${searchResult.error || '未找到该股票，请确认股票代码或名称'}</div>
+                        `;
+                        return;
+                    }
+
+                    code = searchResult.data[0].code;
+                }
+
                 const response = await fetch(`/api/dividend?code=${code}&cost_price=${costPrice}&shares=${shares}`);
                 const result = await response.json();
 
                 if (result.success) {
-                    renderResult(result.data);
+                    allDividendData = result.data;
+                    // 获取所有可用年份（从历史数据和当前数据）
+                    availableYears = extractAvailableYears(result.data);
+                    // 默认选择最新年份
+                    selectedYear = availableYears[0] || null;
+                    renderYearSelector();
+                    renderResultForYear(selectedYear);
                     renderHistorical(result.data.historical_comparison);
                 } else {
                     document.getElementById('resultContent').innerHTML = `
@@ -346,6 +455,160 @@
                 btn.disabled = false;
                 btn.textContent = '计算分红';
             }
+        }
+
+        // 从数据中提取所有可用年份
+        function extractAvailableYears(data) {
+            if (data.all_years_summary) {
+                return Object.keys(data.all_years_summary).sort((a, b) => b - a);
+            }
+            // 兼容旧格式
+            const years = new Set();
+            if (data.historical_comparison) {
+                data.historical_comparison.forEach(h => years.add(h.year));
+            }
+            return Array.from(years).sort((a, b) => b - a);
+        }
+
+        // 渲染年份选择器
+        function renderYearSelector() {
+            const container = document.getElementById('yearSelector');
+            if (availableYears.length <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const html = availableYears.map(year => `
+                <button class="year-btn ${year === selectedYear ? 'active' : ''}"
+                        onclick="selectYear('${year}')">
+                    ${year}年
+                </button>
+            `).join('');
+            container.innerHTML = html;
+        }
+
+        // 选择年份
+        function selectYear(year) {
+            selectedYear = year;
+            renderYearSelector();
+            renderResultForYear(year);
+        }
+
+        // 根据选中的年份渲染结果
+        function renderResultForYear(year) {
+            if (!year || !allDividendData) {
+                return;
+            }
+
+            const costPrice = parseFloat(document.getElementById('costPrice').value);
+            const shares = parseInt(document.getElementById('shares').value);
+            const prevClose = allDividendData.prev_close;
+
+            // 从 all_years_summary 获取该年份的数据
+            const yearSummary = allDividendData.all_years_summary ? allDividendData.all_years_summary[year] : null;
+            if (!yearSummary) {
+                return;
+            }
+
+            const perShare = yearSummary.per_share;
+            const yieldRate = yearSummary.yield_rate;
+            // 计算年度总分红
+            const yearlyTotalDividend = perShare * shares;
+            // 计算股息率（基于当前价）
+            const currentYieldRate = prevClose ? yieldRate * costPrice / prevClose : 0;
+            // 计算回收成本年限
+            const totalCost = costPrice * shares;
+            const costRecoveryYears = yearlyTotalDividend > 0 ? totalCost / yearlyTotalDividend : 0;
+
+            // 渲染结果
+            const html = `
+                <div class="result-header">
+                    <span class="stock-name">${allDividendData.stock_name}</span>
+                    <span class="prev-close">昨收 ${prevClose.toFixed(3)} 元</span>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-label">成本价股息率</div>
+                        <div class="metric-value">${yieldRate.toFixed(2)}<span class="metric-unit">%</span></div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">当前价股息率</div>
+                        <div class="metric-value">${currentYieldRate.toFixed(2)}<span class="metric-unit">%</span></div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">每股分红</div>
+                        <div class="metric-value">${perShare.toFixed(4)}<span class="metric-unit">元</span></div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">年度总分红</div>
+                        <div class="metric-value highlight">${yearlyTotalDividend.toFixed(2)}<span class="metric-unit">元</span></div>
+                    </div>
+                    <div class="metric" style="grid-column: span 2;">
+                        <div class="metric-label">预计回收成本</div>
+                        <div class="metric-value highlight">${costRecoveryYears.toFixed(1)}<span class="metric-unit">年</span></div>
+                    </div>
+                </div>
+                ${yearSummary.has_detail ? '<div class="loading">选择 ' + year + ' 年查看历史分红明细</div>' : '<div class="loading">暂无 ' + year + ' 年分红明细</div>'}
+            `;
+            document.getElementById('resultContent').innerHTML = html;
+        }
+
+        // 搜索下拉交互
+        const stockCodeInput = document.getElementById('stockCode');
+        const searchDropdown = document.getElementById('searchDropdown');
+
+        stockCodeInput.addEventListener('input', function() {
+            const keyword = this.value.trim();
+
+            // 清除之前的定时器
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            // 隐藏下拉
+            searchDropdown.classList.remove('show');
+
+            // 如果输入太短，不搜索
+            if (keyword.length < 1) {
+                return;
+            }
+
+            // 300ms 防抖
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);
+                    const result = await response.json();
+
+                    if (result.success && result.data && result.data.length > 0) {
+                        renderSearchDropdown(result.data);
+                    }
+                } catch (error) {
+                    console.error('Search error:', error);
+                }
+            }, 300);
+        });
+
+        // 点击其他地方关闭下拉
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-wrapper')) {
+                searchDropdown.classList.remove('show');
+            }
+        });
+
+        function renderSearchDropdown(stocks) {
+            const html = stocks.map(stock => `
+                <div class="search-item" onclick="selectStock('${stock.code}', '${stock.name}')">
+                    <div class="search-item-code">${stock.code}</div>
+                    <div class="search-item-name">${stock.name}</div>
+                </div>
+            `).join('');
+            searchDropdown.innerHTML = html;
+            searchDropdown.classList.add('show');
+        }
+
+        function selectStock(code, name) {
+            stockCodeInput.value = code;
+            searchDropdown.classList.remove('show');
         }
 
         function renderResult(data) {
