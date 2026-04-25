@@ -105,8 +105,9 @@ export class MainViewModel {
       this.errorMessage = '请输入正确的6位股票代码';
       return;
     }
-    if (this.costPrice <= 0) {
-      this.errorMessage = '请输入成本价';
+    // 校验成本价格式：非空，且只含数字和小数点
+    if (isNaN(this.costPrice) || this.costPrice <= 0) {
+      this.errorMessage = '请输入有效的成本价（数字）';
       return;
     }
     if (this.shares <= 0) {

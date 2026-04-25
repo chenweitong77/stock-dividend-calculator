@@ -133,11 +133,10 @@ struct MainPage {
 
   // ======== 输入卡片 ========
   @Builder
-  InputCard() {
-    Column({ space: 12 }) {
+  InputCard() {Column({ space: 12 }) {
       // 股票代码（带搜索下拉）
       Column() {
-        Text('股票代码 / 名称')
+        Text('股票代码')
           .fontSize(12)
           .fontColor('#86868B')
           .width('100%')
@@ -148,7 +147,6 @@ struct MainPage {
             .width('100%')
             .height(44)
             .fontSize(16)
-            .type(InputType.Number)
             .maxLength(10)
             .onChange((v: string) => this.onCodeChange(v))
             .onFocus(() => this.onCodeFocus())
@@ -209,10 +207,15 @@ struct MainPage {
           .width('100%')
           .height(44)
           .fontSize(16)
-          .type(InputType.Number)
           .onChange((v: string) => {
             this.inputCost = v;
-            this.viewModel.costPrice = parseFloat(v) || 0;
+            const isNumber = /^[-+]?(\d+(\.\d*)?|\.\d+)$/.test(v);
+            if (isNumber) {
+              this.viewModel.costPrice = parseFloat(v);
+            } else {
+              this.viewModel.costPrice = NaN;
+            }
+
           })
       }
 

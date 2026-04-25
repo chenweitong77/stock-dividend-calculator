@@ -21,6 +21,7 @@ export class StockService {
       });
 
       return StockInfo.parse(raw, code);
+
     } catch (e) {
       console.error('获取股票行情失败: ' + code, e);
       return null;
