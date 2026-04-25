@@ -5,8 +5,9 @@
  */
 import prompt from '@ohos.prompt';
 import { MainViewModel } from '../viewmodel/MainViewModel';
-import { DividendType } from '../model/DividendRecord';
+import { DividendType, DividendRecord } from '../model/DividendRecord';
 import { StockSearchItem } from '../service/StockSearchService';
+import { HistoricalComparison } from '../model/DividendResult';
 
 @Entry
 @Component
@@ -40,7 +41,7 @@ struct MainPage {
    */
   private searchTimer: number = -1;
 
-  onCodeChange(value: string) {
+  onCodeChange(value: string): void {
     this.inputCode = value;
     this.viewModel.stockCode = value;
 
@@ -56,24 +57,35 @@ struct MainPage {
     }
 
     // 300ms 防抖
-    this.searchTimer = setTimeout(() => {
+    const timerId: number = setTimeout(() => {
       this.viewModel.searchStocks(value).then(() => {
         this.showDropdown = this.viewModel.showSearchDropdown;
       });
     }, 300) as number;
+    this.searchTimer = timerId;
   }
 
-  onCodeFocus(focused: boolean) {
-    if (focused && this.viewModel.searchResults.length > 0) {
+  onCodeFocus(): void {
+    if (this.viewModel.searchResults.length > 0) {
       this.showDropdown = true;
     }
   }
 
-  selectSearchItem(item: StockSearchItem) {
+  selectSearchItem(item: StockSearchItem): void {
     this.inputCode = item.code;
     this.viewModel.selectStock(item.code);
     this.showDropdown = false;
     this.viewModel.searchResults = [];
+  }
+
+  getTypeName(type: DividendType): string {
+    switch (type) {
+      case DividendType.Q1: return '一季报';
+      case DividendType.MidYear: return '中报';
+      case DividendType.Q3: return '三季报';
+      case DividendType.FullYear: return '年报';
+      default: return '其他';
+    }
   }
 
   // ======== 页面 build ========
@@ -136,10 +148,10 @@ struct MainPage {
             .width('100%')
             .height(44)
             .fontSize(16)
-            .inputMode(InputMode.Numeric)
+            .type(InputType.Number)
             .maxLength(10)
             .onChange((v: string) => this.onCodeChange(v))
-            .onFocus((f: boolean) => this.onCodeFocus(f))
+            .onFocus(() => this.onCodeFocus())
 
           // 搜索下拉
           if (this.showDropdown && this.viewModel.searchResults.length > 0) {
@@ -197,7 +209,6 @@ struct MainPage {
           .width('100%')
           .height(44)
           .fontSize(16)
-          .inputMode(InputMode.Numeric)
           .type(InputType.Number)
           .onChange((v: string) => {
             this.inputCost = v;
@@ -216,7 +227,6 @@ struct MainPage {
           .width('100%')
           .height(44)
           .fontSize(16)
-          .inputMode(InputMode.Numeric)
           .type(InputType.Number)
           .onChange((v: string) => {
             this.inputShares = v;
@@ -235,8 +245,6 @@ struct MainPage {
         .borderRadius(8)
         .enabled(!this.viewModel.isLoading)
         .onClick(() => {
-          // 点击时隐藏键盘和下拉
-          focusControl.getOrCreateFocusControlTuple().requestFocus(null);
           this.showDropdown = false;
           this.viewModel.calculate();
         })
@@ -324,21 +332,20 @@ struct MainPage {
           .width('100%')
           .textAlign(TextAlign.Center)
           .padding({ top: 20, bottom: 20 })
-        return;
-      }
+      } else {
+        // 年份选择器（多个年份时显示）
+        if (this.viewModel.availableYears.length > 1) {
+          this.YearSelector()
+        }
 
-      // 年份选择器（多个年份时显示）
-      if (this.viewModel.availableYears.length > 1) {
-        this.YearSelector()
-      }
+        // 指标网格（2x3 布局）
+        this.MetricsGrid()
 
-      // 指标网格（2x3 布局）
-      this.MetricsGrid()
-
-      // 分红明细
-      if (this.viewModel.dividendResult?.details.length > 0) {
-        Divider().color('#E5E5E5').margin({ top: 12, bottom: 8 })
-        this.DividendDetails()
+        // 分红明细
+        if (this.viewModel.dividendResult && this.viewModel.dividendResult.details.length > 0) {
+          Divider().color('#E5E5E5').margin({ top: 12, bottom: 8 })
+          this.DividendDetails()
+        }
       }
     }
     .width('100%')
@@ -463,7 +470,7 @@ struct MainPage {
         .width('100%')
         .margin({ bottom: 8 })
 
-      ForEach(this.viewModel.dividendResult?.details ?? [], (detail: any) => {
+      ForEach(this.viewModel.dividendResult?.details ?? [], (detail: DividendRecord) => {
         Row() {
           // 分红类型标签
           Text(this.getTypeName(detail.type))
@@ -497,19 +504,6 @@ struct MainPage {
           color: '#F0F0F0'
         })
       })
-    }
-  }
-
-  /**
-   * 获取分红类型的中文名称
-   */
-  getTypeName(type: DividendType): string {
-    switch (type) {
-      case DividendType.Q1: return '一季报';
-      case DividendType.MidYear: return '中报';
-      case DividendType.Q3: return '三季报';
-      case DividendType.FullYear: return '年报';
-      default: return '其他';
     }
   }
 
@@ -551,7 +545,7 @@ struct MainPage {
       Divider().color('#E5E5E5')
 
       // 数据行
-      ForEach(this.viewModel.dividendResult?.historicalComparison ?? [], (h: any) => {
+      ForEach(this.viewModel.dividendResult?.historicalComparison ?? [], (h: HistoricalComparison) => {
         Row() {
           Text(h.year + '年')
             .fontSize(14)
@@ -592,6 +586,3 @@ struct MainPage {
     })
   }
 }
-
-// 获取焦点控制
-import { focusControl } from '@ohos.ability.focusControl';

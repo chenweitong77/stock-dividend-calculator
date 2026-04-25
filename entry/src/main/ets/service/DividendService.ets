@@ -4,14 +4,18 @@
  * 接口：reportName=RPT_LICO_FN_CPD
  */
 import { HttpUtil } from '../util/HttpUtil';
-import { DividendRecord, YearlyDividend, DividendType } from '../model/DividendRecord';
+import { DividendRecord, YearlyDividend, DividendType, ApiDataRecord } from '../model/DividendRecord';
 
-interface ApiResponse {
-  success: boolean;
-  result?: {
-    data: Record<string, string | number>[];
-  };
-  message?: string;
+/** API 响应结果数据 */
+export class ApiResultData {
+  data: ApiDataRecord[] = [];
+}
+
+/** API 响应结果 */
+export class ApiResult {
+  success: boolean = false;
+  result: ApiResultData | null = null;
+  message: string = '';
 }
 
 export class DividendService {
@@ -22,27 +26,32 @@ export class DividendService {
    */
   static async getDividendRecords(code: string, pageSize: number = 20): Promise<DividendRecord[]> {
     try {
-      const url = `https://datacenter-web.eastmoney.com/api/data/v1/get?` +
-        `reportName=RPT_LICO_FN_CPD&` +
-        `columns=SECURITY_CODE,SECURITY_NAME_ABBR,REPORTDATE,ASSIGNDSCRPT,PAYYEAR,ZXGXL,NOTICE_DATE,EITIME&` +
-        `filter=(SECURITY_CODE="${code}")&` +
-        `pageNumber=1&pageSize=${pageSize}&source=WEB&client=WEB`;
+      const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?' +
+        'reportName=RPT_LICO_FN_CPD&' +
+        'columns=SECURITY_CODE,SECURITY_NAME_ABBR,REPORTDATE,ASSIGNDSCRPT,PAYYEAR,ZXGXL,NOTICE_DATE,EITIME&' +
+        'filter=(SECURITY_CODE="' + code + '")&' +
+        'pageNumber=1&pageSize=' + pageSize + '&source=WEB&client=WEB';
 
       const raw = await HttpUtil.get(url, {
         'Referer': 'https://data.eastmoney.com/'
       });
 
-      const response: ApiResponse = JSON.parse(raw);
+      const response: ApiResult = JSON.parse(raw);
 
       if (!response.success || !response.result) {
         console.error('获取分红数据失败:', response.message);
         return [];
       }
 
-      return response.result.data.map(item => DividendRecord.fromApiData(item));
+      const items = response.result.data;
+      const results: DividendRecord[] = [];
+      for (let i = 0; i < items.length; i++) {
+        results.push(DividendRecord.fromApiData(items[i]));
+      }
+      return results;
 
     } catch (e) {
-      console.error(`获取分红记录失败: ${code}`, e);
+      console.error('获取分红记录失败: ' + code, e);
       return [];
     }
   }
@@ -56,13 +65,11 @@ export class DividendService {
     const yearly = new YearlyDividend();
     yearly.year = year;
 
-    for (const record of records) {
-      // 按 PAYYEAR（利润归属年度）归类
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
       if (record.payYear !== year) {
         continue;
       }
-
-      // 跳过无现金分红的记录
       if (record.perShare <= 0) {
         continue;
       }
@@ -70,7 +77,6 @@ export class DividendService {
       yearly.details.push(record);
       yearly.totalPerShare += record.perShare;
 
-      // 判断包含哪些类型的分红
       if (record.type === DividendType.Q1) {
         yearly.hasQ1 = true;
       } else if (record.type === DividendType.MidYear) {
@@ -82,9 +88,7 @@ export class DividendService {
       }
     }
 
-    // 保留4位小数
     yearly.totalPerShare = Math.round(yearly.totalPerShare * 10000) / 10000;
-
     return yearly;
   }
 }

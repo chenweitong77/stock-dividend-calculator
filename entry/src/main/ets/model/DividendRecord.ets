@@ -3,6 +3,18 @@
  * 来源：东方财富 RPT_LICO_FN_CPD 接口
  */
 
+/** API 原始数据记录（具名字段，避免括号访问） */
+export class ApiDataRecord {
+  PAYYEAR: string = '';
+  NOTICE_DATE: string = '';
+  EITIME: string = '';
+  ASSIGNDSCRPT: string = '';
+  SECURITY_CODE: string = '';
+  SECURITY_NAME_ABBR: string = '';
+  ZXGXL: string = '';
+  REPORTDATE: string = '';
+}
+
 /** 分红类型 */
 export enum DividendType {
   Q1 = '一季报',    // 一季报分红
@@ -22,15 +34,15 @@ export class DividendRecord {
   type: DividendType = DividendType.MidYear;
 
   /**
-   * 从东方财富 API 原始数据构建
+   * 从东方财富 API 原始数据构建（使用具名字段，避免括号访问）
    */
-  static fromApiData(item: Record<string, string | number>): DividendRecord {
+  static fromApiData(item: ApiDataRecord): DividendRecord {
     const record = new DividendRecord();
 
-    record.payYear = String(item['PAYYEAR'] ?? '');
-    record.noticeDate = String(item['NOTICE_DATE'] ?? '').substring(0, 10);
-    record.exDate = String(item['EITIME'] ?? '').substring(0, 10);
-    record.desc = String(item['ASSIGNDSCRPT'] ?? '');
+    record.payYear = item.PAYYEAR ?? '';
+    record.noticeDate = (item.NOTICE_DATE ?? '').substring(0, 10);
+    record.exDate = (item.EITIME ?? '').substring(0, 10);
+    record.desc = item.ASSIGNDSCRPT ?? '';
     record.perShare = DividendRecord.parseDividendPerShare(record.desc);
     record.isPaid = DividendRecord.checkIfPaid(record.exDate);
     record.type = DividendRecord.detectType(record.exDate, record.noticeDate, record.payYear);

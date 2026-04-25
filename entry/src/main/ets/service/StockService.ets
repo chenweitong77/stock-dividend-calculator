@@ -14,7 +14,7 @@ export class StockService {
     try {
       // 上海: sh 前缀, 深圳: sz 前缀
       const prefix = code.startsWith('6') ? 'sh' : 'sz';
-      const url = `https://hq.sinajs.cn/list=${prefix}${code}`;
+      const url = 'https://hq.sinajs.cn/list=' + prefix + code;
 
       const raw = await HttpUtil.get(url, {
         'Referer': 'https://finance.sina.com.cn'
@@ -22,7 +22,7 @@ export class StockService {
 
       return StockInfo.parse(raw, code);
     } catch (e) {
-      console.error(`获取股票行情失败: ${code}`, e);
+      console.error('获取股票行情失败: ' + code, e);
       return null;
     }
   }

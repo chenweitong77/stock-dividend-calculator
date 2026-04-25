@@ -150,7 +150,7 @@ export class MainViewModel {
       this.dividendResult = this.buildResult(this.selectedYear);
 
     } catch (e) {
-      this.errorMessage = `计算异常: ${e}`;
+      this.errorMessage = '计算异常: ' + e;
     } finally {
       this.isLoading = false;
     }
@@ -162,7 +162,8 @@ export class MainViewModel {
   private getAvailableYears(): string[] {
     const years = ['2025', '2024', '2023', '2022'];
     const available: string[] = [];
-    for (const y of years) {
+    for (let i = 0; i < years.length; i++) {
+      const y = years[i];
       const yearly = DividendService.getYearlyDividend(this.dividendRecords, y);
       if (yearly.details.length > 0) {
         available.push(y);
@@ -191,7 +192,7 @@ export class MainViewModel {
 
     if (!this.yearlyDividend || this.yearlyDividend.details.length === 0) {
       result.noDividend = true;
-      result.message = `暂无 ${year} 年分红数据`;
+      result.message = '暂无 ' + year + ' 年分红数据';
       return result;
     }
 
@@ -243,7 +244,8 @@ export class MainViewModel {
     const summary: Record<string, YearSummary> = {};
     const years = ['2025', '2024', '2023', '2022'];
 
-    for (const y of years) {
+    for (let i = 0; i < years.length; i++) {
+      const y = years[i];
       const yearly = DividendService.getYearlyDividend(this.dividendRecords, y);
       if (yearly.details.length > 0) {
         const s = new YearSummary();
@@ -266,7 +268,8 @@ export class MainViewModel {
     const years = ['2024', '2023', '2022'];
     const prevClose = this.stockInfo?.prevClose ?? 0;
 
-    for (const y of years) {
+    for (let i = 0; i < years.length; i++) {
+      const y = years[i];
       const yearly = DividendService.getYearlyDividend(this.dividendRecords, y);
       if (yearly.details.length > 0) {
         const h = new HistoricalComparison();
