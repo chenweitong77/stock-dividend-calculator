@@ -120,15 +120,22 @@ export class MainViewModel {
     this.hideSearchDropdown();
 
     try {
+      console.info('[ViewModel] 开始计算，股票代码: ' + this.stockCode);
+
       // 1. 获取股票行情
+      console.info('[ViewModel] 正在获取行情...');
       this.stockInfo = await StockService.getStockPrice(this.stockCode);
+      console.info('[ViewModel] 行情结果: ' + JSON.stringify(this.stockInfo));
+
       if (!this.stockInfo) {
         this.errorMessage = '获取行情数据失败，请检查股票代码';
         return;
       }
 
       // 2. 获取分红数据
+      console.info('[ViewModel] 正在获取分红数据...');
       this.dividendRecords = await DividendService.getDividendRecords(this.stockCode);
+      console.info('[ViewModel] 分红记录数量: ' + this.dividendRecords.length);
 
       if (this.dividendRecords.length === 0) {
         // 股票无分红记录，但行情数据获取成功，兼容展示
@@ -151,6 +158,7 @@ export class MainViewModel {
       this.dividendResult = this.buildResult(this.selectedYear);
 
     } catch (e) {
+      console.error('[ViewModel] 计算异常', e);
       this.errorMessage = '计算异常: ' + e;
     } finally {
       this.isLoading = false;

@@ -17,7 +17,8 @@ export class StockService {
       const url = 'https://hq.sinajs.cn/list=' + prefix + code;
 
       const raw = await HttpUtil.get(url, {
-        'Referer': 'https://finance.sina.com.cn'
+        'Referer': 'https://finance.sina.com.cn',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       });
 
       return StockInfo.parse(raw, code);

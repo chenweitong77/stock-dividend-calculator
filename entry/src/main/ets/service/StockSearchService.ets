@@ -175,6 +175,10 @@ export class StockSearchService {
       const name = entries[i][0];
       const code = entries[i][1];
       if (name.includes(kw) || kw.includes(name) || code.includes(kw)) {
+        // 过滤非 A 股（6位数字开头为0、9的为港股或其他）
+        if (code.length === 6 && (code.startsWith('0') || code.startsWith('9'))) {
+          continue; // 跳过港股代码
+        }
         const market = code.startsWith('6') || code.startsWith('5') ? 'sh' : 'sz';
         const stdName = CODE_TO_NAME[code] || name;
         results.push({ code: code, name: stdName, market: market });
@@ -186,6 +190,10 @@ export class StockSearchService {
       const code = codeEntries[i][0];
       const name = codeEntries[i][1];
       if (code.includes(kw) || name.includes(kw)) {
+        // 过滤非 A 股
+        if (code.length === 6 && (code.startsWith('0') || code.startsWith('9'))) {
+          continue;
+        }
         const market = code.startsWith('6') || code.startsWith('5') ? 'sh' : 'sz';
         if (!results.some((r: StockSearchItem) => r.code === code)) {
           results.push({ code: code, name: name, market: market });
@@ -247,7 +255,8 @@ export class StockSearchService {
           const item = dataItems[i];
           const code = String(item.SECURITY_CODE ?? '');
           const name = String(item.SECURITY_NAME_ABBR ?? '');
-          if (code.length === 6 && name) {
+          // 只存储 A 股：6位数字，以 6 或 0 开头
+          if (code.length === 6 && name && (code.startsWith('6') || code.startsWith('0'))) {
             fullStockCache.set(code, name);
             fullStockCache.set(name, code);
           }
