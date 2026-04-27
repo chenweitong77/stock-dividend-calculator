@@ -26,14 +26,19 @@ export class DividendService {
    */
   static async getDividendRecords(code: string, pageSize: number = 20): Promise<DividendRecord[]> {
     try {
+      // filter 表达式需要 URL 编码，避免特殊字符导致解析错误
+      const filterExpr = '(SECURITY_CODE="' + code + '")';
+      const encodedFilter = encodeURIComponent(filterExpr);
       const url = 'https://datacenter-web.eastmoney.com/api/data/v1/get?' +
         'reportName=RPT_LICO_FN_CPD&' +
         'columns=SECURITY_CODE,SECURITY_NAME_ABBR,REPORTDATE,ASSIGNDSCRPT,PAYYEAR,ZXGXL,NOTICE_DATE,EITIME&' +
-        'filter=(SECURITY_CODE="' + code + '")&' +
+        'filter=' + encodedFilter + '&' +
         'pageNumber=1&pageSize=' + pageSize + '&source=WEB&client=WEB';
 
       const raw = await HttpUtil.get(url, {
-        'Referer': 'https://data.eastmoney.com/'
+        'Referer': 'https://data.eastmoney.com/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': '*/*'
       });
 
       const response: ApiResult = JSON.parse(raw);

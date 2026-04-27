@@ -25,6 +25,8 @@ export class HttpUtil {
           const item = new HttpHeaderItem();
           item.key = k;
           item.value = headers[k];
+          console.info('key: ' + item.key);
+          console.info('value: ' + item.value);
           headerArray.push(item);
         }
       }
@@ -39,6 +41,8 @@ export class HttpUtil {
       if (response.responseCode === 200) {
         return (response.result as string) ?? '';
       } else {
+        const resultStr = (response.result as string) ?? '';
+        console.error('HTTP ' + response.responseCode + ' 响应: ' + resultStr);
         throw new Error('HTTP ' + response.responseCode);
       }
     } finally {
