@@ -319,7 +319,7 @@ struct MainPage {
       }
       .width('100%')
 
-      Text('昨收 ' + this.formatMoney(this.viewModel.dividendResult?.stock.prevClose ?? 0) + ' 元')
+      Text('现价 ' + this.formatMoney(this.viewModel.dividendResult?.stock.currentPrice ?? 0) + ' 元')
         .fontSize(13)
         .fontColor('#86868B')
         .width('100%')
@@ -378,7 +378,7 @@ struct MainPage {
           .borderWidth(1)
           .borderRadius(16)
           .onClick(() => {
-            this.viewModel.selectYear(year);
+            this.viewModel = this.viewModel.selectYear(year);
           })
       })
     }

@@ -85,15 +85,28 @@ export class MainViewModel {
   }
 
   /**
-   * 选择年份
+   * 选择年份（返回新的 ViewModel 实例以触发 UI 更新）
    */
-  selectYear(year: string): void {
-    if (this.selectedYear === year) return;
-    this.selectedYear = year;
-    // 重新构建当前选中年份的结果
+  selectYear(year: string): MainViewModel {
+    if (this.selectedYear === year) return this;
+    const newVm = new MainViewModel();
+    newVm.stockCode = this.stockCode;
+    newVm.costPrice = this.costPrice;
+    newVm.shares = this.shares;
+    newVm.stockInfo = this.stockInfo;
+    newVm.dividendRecords = this.dividendRecords;
+    newVm.yearlyDividend = this.yearlyDividend;
+    newVm.isLoading = this.isLoading;
+    newVm.errorMessage = this.errorMessage;
+    newVm.searchResults = this.searchResults;
+    newVm.showSearchDropdown = this.showSearchDropdown;
+    newVm.availableYears = this.availableYears;
+    newVm.selectedYear = year;
+    // 重新构建结果
     if (this.dividendRecords.length > 0 && this.stockInfo) {
-      this.dividendResult = this.buildResult(year);
+      newVm.dividendResult = newVm.buildResult(year);
     }
+    return newVm;
   }
 
   /**
@@ -208,8 +221,8 @@ export class MainViewModel {
     result.yearlyPerShare = this.yearlyDividend.totalPerShare;
     result.totalDividend = Math.round(result.yearlyPerShare * this.shares * 100) / 100;
     result.yieldRateByCost = this.calcYieldRate(result.yearlyPerShare, this.costPrice);
-    result.yieldRateByPrice = this.stockInfo?.prevClose
-      ? this.calcYieldRate(result.yearlyPerShare, this.stockInfo.prevClose)
+    result.yieldRateByPrice = this.stockInfo?.current
+      ? this.calcYieldRate(result.yearlyPerShare, this.stockInfo.current)
       : 0;
     result.details = this.yearlyDividend.details;
     result.isAnnounced = this.yearlyDividend.details.length > 0;
@@ -275,7 +288,7 @@ export class MainViewModel {
   private buildHistoricalComparison(): HistoricalComparison[] {
     const historical: HistoricalComparison[] = [];
     const years = ['2024', '2023', '2022'];
-    const prevClose = this.stockInfo?.prevClose ?? 0;
+    const currentPrice = this.stockInfo?.current ?? 0;
 
     for (let i = 0; i < years.length; i++) {
       const y = years[i];
@@ -285,8 +298,8 @@ export class MainViewModel {
         h.year = y;
         h.perShare = yearly.totalPerShare;
         h.costYield = this.calcYieldRate(yearly.totalPerShare, this.costPrice);
-        h.currentYield = prevClose > 0
-          ? this.calcYieldRate(yearly.totalPerShare, prevClose)
+        h.currentYield = currentPrice > 0
+          ? this.calcYieldRate(yearly.totalPerShare, currentPrice)
           : 0;
         historical.push(h);
       }
