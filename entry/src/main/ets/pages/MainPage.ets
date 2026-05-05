@@ -341,8 +341,83 @@ struct MainPage {
           this.YearSelector()
         }
 
-        // 指标网格（2x3 布局）
-        this.MetricsGrid()
+        // 指标网格
+        Column({ space: 8 }) {
+          Row() {
+            Text('成本价股息率')
+              .fontSize(14)
+              .fontColor('#86868B')
+            Text(this.formatPercent(this.viewModel.dividendResult?.yieldRateByCost ?? 0))
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#1D1D1F')
+              .margin({ left: 8 })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F5F5F7')
+          .borderRadius(8)
+
+          Row() {
+            Text('当前价股息率')
+              .fontSize(14)
+              .fontColor('#86868B')
+            Text(this.formatPercent(this.viewModel.dividendResult?.yieldRateByPrice ?? 0))
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#1D1D1F')
+              .margin({ left: 8 })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F5F5F7')
+          .borderRadius(8)
+
+          Row() {
+            Text('每股分红')
+              .fontSize(14)
+              .fontColor('#86868B')
+            Text(this.formatMoney(this.viewModel.dividendResult?.yearlyPerShare ?? 0) + ' 元')
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#1D1D1F')
+              .margin({ left: 8 })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F5F5F7')
+          .borderRadius(8)
+
+          Row() {
+            Text('年度总分红')
+              .fontSize(14)
+              .fontColor('#86868B')
+            Text(this.formatMoney(this.viewModel.dividendResult?.totalDividend ?? 0) + ' 元')
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#007AFF')
+              .margin({ left: 8 })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F5F5F7')
+          .borderRadius(8)
+
+          Row() {
+            Text('预计回收成本')
+              .fontSize(14)
+              .fontColor('#86868B')
+            Text((this.viewModel.dividendResult?.costRecoveryYears ?? 0).toFixed(1) + ' 年')
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#007AFF')
+              .margin({ left: 8 })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F5F5F7')
+          .borderRadius(8)
+        }
 
         // 分红明细
         if (this.viewModel.dividendResult && this.viewModel.dividendResult.details.length > 0) {
@@ -386,82 +461,6 @@ struct MainPage {
     .margin({ top: 4, bottom: 4 })
   }
 
-  // ======== 指标网格 ========
-  @Builder
-  MetricsGrid() {
-    Column() {
-      // 第一行：股息率 x2
-      Row({ space: 12 }) {
-        this.MetricCard(
-          '成本价股息率',
-          this.formatPercent(this.viewModel.dividendResult?.yieldRateByCost ?? 0),
-          '#1D1D1F'
-        )
-        this.MetricCard(
-          '当前价股息率',
-          this.formatPercent(this.viewModel.dividendResult?.yieldRateByPrice ?? 0),
-          '#1D1D1F'
-        )
-      }
-
-      Row({ space: 12 }) {
-        this.MetricCard(
-          '每股分红',
-          this.formatMoney(this.viewModel.dividendResult?.yearlyPerShare ?? 0) + ' 元',
-          '#1D1D1F'
-        )
-        this.MetricCard(
-          '年度总分红',
-          this.formatMoney(this.viewModel.dividendResult?.totalDividend ?? 0) + ' 元',
-          '#007AFF'
-        )
-      }
-
-      // 回收成本（占整行）
-      this.MetricCardFull(
-        '预计回收成本',
-        (this.viewModel.dividendResult?.costRecoveryYears ?? 0).toFixed(1) + ' 年',
-        '#007AFF'
-      )
-    }
-  }
-
-  @Builder
-  MetricCard(label: string, value: string, valueColor: string) {
-    Column() {
-      Text(label)
-        .fontSize(12)
-        .fontColor('#86868B')
-      Text(value)
-        .fontSize(22)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(valueColor)
-        .margin({ top: 4 })
-    }
-    .flexGrow(1)
-    .padding(12)
-    .backgroundColor('#F5F5F7')
-    .borderRadius(8)
-  }
-
-  @Builder
-  MetricCardFull(label: string, value: string, valueColor: string) {
-    Row() {
-      Text(label)
-        .fontSize(12)
-        .fontColor('#86868B')
-      Text(value)
-        .fontSize(22)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(valueColor)
-        .margin({ left: 8 })
-    }
-    .width('100%')
-    .padding(12)
-    .backgroundColor('#F5F5F7')
-    .borderRadius(8)
-  }
-
   // ======== 分红明细列表 ========
   @Builder
   DividendDetails() {
@@ -501,91 +500,56 @@ struct MainPage {
           .alignItems(HorizontalAlign.End)
         }
         .width('100%')
-        .padding({ top: 8, bottom: 8 })
-        .border({
-          width: { bottom: 1 },
-          color: '#F0F0F0'
-        })
+        .padding({ top: 10, bottom: 10 })
       })
     }
   }
 
-  // ======== 历史年度对比表格 ========
+  // ======== 历史年度对比 ========
   @Builder
   HistoricalSection() {
-    Column({ space: 10 }) {
+    Column({ space: 8 }) {
       Text('历史年度对比')
-        .fontSize(16)
+        .fontSize(14)
         .fontWeight(FontWeight.Bold)
         .fontColor('#1D1D1F')
         .width('100%')
         .margin({ bottom: 4 })
 
-      // 表头
-      Row() {
-        Text('年度')
-          .fontSize(12)
-          .fontColor('#86868B')
-          .width(60)
-        Text('每股分红')
-          .fontSize(12)
-          .fontColor('#86868B')
-          .flexGrow(1)
-        Text('成本价股息率')
-          .fontSize(12)
-          .fontColor('#86868B')
-          .flexGrow(1)
-          .textAlign(TextAlign.End)
-        Text('当前价股息率')
-          .fontSize(12)
-          .fontColor('#86868B')
-          .flexGrow(1)
-          .textAlign(TextAlign.End)
-      }
-      .width('100%')
-      .padding({ left: 12, right: 12, top: 10, bottom: 6 })
-
-      Divider().color('#E5E5E5')
-
-      // 数据行
-      ForEach(this.viewModel.dividendResult?.historicalComparison ?? [], (h: HistoricalComparison) => {
+      ForEach(this.viewModel.dividendResult?.historicalComparison ?? [], (item: HistoricalComparison) => {
         Row() {
-          Text(h.year + '年')
+          Text(item.year + '年')
             .fontSize(14)
             .fontColor('#1D1D1F')
-            .width(60)
-          Text(h.perShare.toFixed(4) + ' 元')
-            .fontSize(14)
+            .flexGrow(1)
+
+          Text('每股 ' + item.perShare.toFixed(4) + ' 元')
+            .fontSize(13)
             .fontColor('#333333')
             .flexGrow(1)
-          Text(this.formatPercent(h.costYield))
-            .fontSize(14)
-            .fontColor('#FF6B6B')
-            .flexGrow(1)
-            .textAlign(TextAlign.End)
-          Text(this.formatPercent(h.currentYield))
-            .fontSize(14)
-            .fontColor('#86868B')
-            .flexGrow(1)
-            .textAlign(TextAlign.End)
+
+          Column() {
+            Text('成本息率 ' + this.formatPercent(item.costYield))
+              .fontSize(12)
+              .fontColor('#86868B')
+            Text('现价息率 ' + this.formatPercent(item.currentYield))
+              .fontSize(12)
+              .fontColor('#86868B')
+              .margin({ top: 2 })
+          }
+          .alignItems(HorizontalAlign.End)
         }
         .width('100%')
-        .padding({ left: 12, right: 12, top: 10, bottom: 10 })
-        .border({
-          width: { bottom: 1 },
-          color: '#F0F0F0'
+        .padding(12)
+        .backgroundColor('#FFFFFF')
+        .borderRadius(8)
+        .shadow({
+          radius: 4,
+          color: 'rgba(0,0,0,0.06)',
+          offsetX: 0,
+          offsetY: 2
         })
       })
     }
-    .width('100%')
-    .padding(8)
-    .backgroundColor('#FFFFFF')
-    .borderRadius(12)
-    .shadow({
-      radius: 8,
-      color: 'rgba(0,0,0,0.08)',
-      offsetX: 0,
-      offsetY: 2
-    })
   }
 }
